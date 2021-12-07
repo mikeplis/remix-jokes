@@ -1,3 +1,4 @@
+import { User } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { createCookieSessionStorage, redirect } from "remix";
 import { db } from "./db.server";
@@ -88,6 +89,35 @@ export async function createUserSession(userId: string, redirectTo: string) {
     return redirect(redirectTo, {
         headers: {
             "Set-Cookie": await storage.commitSession(session),
+        },
+    });
+}
+
+export async function getUser(request: Request) {
+    let userId = await getUserId(request);
+    if (typeof userId !== "string") {
+        return null;
+    }
+
+    try {
+        let user = await db.user.findUnique({
+            where: { id: userId },
+        });
+        return user;
+    } catch {
+        throw logout(request);
+    }
+}
+
+/**
+ * Destroys the session and redirects the user to the home page
+ */
+export async function logout(request: Request) {
+    const session = await getUserSession(request);
+
+    return redirect("/login", {
+        headers: {
+            "Set-Cookie": await storage.destroySession(session),
         },
     });
 }
